@@ -11,18 +11,19 @@ import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.*;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.*;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
 import java.util.Map;
@@ -136,8 +137,25 @@ public class ESClient {
         // builder.query(QueryBuilders.matchQuery("name", "红楼 梦").operator(Operator.AND));
 
         //multi match
-       // builder.query(QueryBuilders.multiMatchQuery(searchValue, "name", "author"));
+        // builder.query(QueryBuilders.multiMatchQuery(searchValue, "name", "author"));
 
+        //query by ids
+        // builder.query(QueryBuilders.idsQuery().addIds("1", "m_3_d3QB-KIjfuldzqA7"));
+
+        //query by prefix
+        // builder.query(QueryBuilders.prefixQuery("author", searchValue));
+
+        //fuzzy query
+        // builder.query(QueryBuilders.fuzzyQuery("author", searchValue));
+
+        //wildCard query
+        //builder.query(QueryBuilders.wildcardQuery("author", "曹??"));
+
+        //range query
+        // builder.query(QueryBuilders.rangeQuery("count").gte(10).lte(30));
+
+        //regexp query
+        //builder.query(QueryBuilders.regexpQuery("mobile","182[0-9](8)"));
 
         searchRequest.source(builder);
         RestHighLevelClient client = getClient(host, port);
@@ -154,5 +172,40 @@ public class ESClient {
         return client.get(getRequest, RequestOptions.DEFAULT);
 
 
+    }
+
+    public SearchResponse scrollSearch(String index, String type, String host, int port) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.types(type);
+
+        SearchSourceBuilder builder = new SearchSourceBuilder();
+        builder.size(2);
+        builder.sort("on_sale", SortOrder.DESC);
+        builder.query(QueryBuilders.matchAllQuery());
+
+        searchRequest.source(builder);
+        searchRequest.scroll(TimeValue.timeValueMinutes(5));
+
+        RestHighLevelClient client = getClient(host, port);
+        return client.search(searchRequest, RequestOptions.DEFAULT);
+    }
+
+    public SearchResponse scrollSearchById(String host, int port, String scrollId) throws IOException {
+        SearchScrollRequest scrollRequest = new SearchScrollRequest(scrollId);
+
+        scrollRequest.scroll(TimeValue.timeValueMinutes(5));
+
+        RestHighLevelClient client = getClient(host, port);
+
+        return client.scroll(scrollRequest, RequestOptions.DEFAULT);
+
+    }
+
+    public ClearScrollResponse clearScrollId(String host, int port, String scrollId) throws IOException {
+        ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
+        clearScrollRequest.addScrollId(scrollId);
+
+        RestHighLevelClient client = getClient(host, port);
+        return client.clearScroll(clearScrollRequest, RequestOptions.DEFAULT);
     }
 }

@@ -7,6 +7,7 @@ import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.ClearScrollResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.action.update.UpdateResponse;
@@ -30,7 +31,7 @@ public class ESClientTest {
 
     @Test
     void testGetClient() {
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
         RestHighLevelClient restHighLevelClient = esClient.getClient(host, port);
         assertNotNull(restHighLevelClient);
@@ -62,7 +63,7 @@ public class ESClientTest {
     void testCreateIndex() throws IOException {
         String index = "person";
         String type = "man";
-        CreateIndexResponse response = esClient.createIndex(index, type, 1, 1, "192.168.33.10", 9200);
+        CreateIndexResponse response = esClient.createIndex(index, type, 1, 1, "192.168.33.12", 9200);
         assertNotNull(response);
         assertTrue(response.isAcknowledged());
         assertEquals("person", response.index());
@@ -71,7 +72,7 @@ public class ESClientTest {
     @Test
     void testIndexExist() throws IOException {
         String index = "person";
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
         assertTrue(esClient.indexExist(index, host, port));
     }
@@ -79,7 +80,7 @@ public class ESClientTest {
     @Test
     void testDeleteIndex() throws IOException {
         String index = "person";
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
 
         AcknowledgedResponse acknowledgedResponse = esClient.deleteIndex(host, port, index);
@@ -91,7 +92,7 @@ public class ESClientTest {
     void testCreateDoc() throws IOException {
         String index = "person";
         String type = "man";
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
 
         Person person = new Person("1", "zhangsan", 12, new Date());
@@ -105,7 +106,7 @@ public class ESClientTest {
     void updateDoc() throws IOException {
         String index = "person";
         String type = "man";
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
 
         Map<String, Object> doc = new HashMap<>();
@@ -119,7 +120,7 @@ public class ESClientTest {
     void deleteDoc() throws IOException {
         String index = "person";
         String type = "man";
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
         String id = "1";
 
@@ -132,7 +133,7 @@ public class ESClientTest {
         String index = "book";
         String type = "novel";
 
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
         String searchValue = "红";
 
@@ -143,14 +144,53 @@ public class ESClientTest {
     }
 
     @Test
-    void searchById() throws IOException {
+    void testSearchById() throws IOException {
         String index = "book";
         String type = "novel";
 
-        String host = "192.168.33.10";
+        String host = "192.168.33.12";
         int port = 9200;
-        String id = "id";
+        String id = "m_3_d3QB-KIjfuldzqA7";
 
         GetResponse getResponse = esClient.searchById(host, port, index, type, id);
+        assertEquals("{\"name\":\"红楼梦\",\"author\":\"曹雪芹\",\"count\":1000023,\"on_sale\":\"1988-01-01\",\"desc\":\"奥手动阀手动阀撒地方撒旦分为啊多发点是否为零杰拉德\"}\n",
+                getResponse.getSourceAsString());
+    }
+
+
+    @Test
+    void testSearchByScroll() throws IOException {
+        String index = "book";
+        String type = "novel";
+
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        SearchResponse searchResponse = esClient.scrollSearch(index, type, host, port);
+        assertEquals(200, searchResponse.status().getStatus());
+
+        String scrollId = searchResponse.getScrollId();
+        System.out.println(scrollId);
+        assertNotNull(scrollId);
+    }
+
+    @Test
+    void testScrollSearchById() throws IOException {
+        String scrollId = "DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAAEYkWanNEQjNZNjRUZlNnLTFaYmxpMXUwUQ==";
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        SearchResponse searchResponse = esClient.scrollSearchById(host, port, scrollId);
+        assertEquals(200, searchResponse.status().getStatus());
+    }
+
+    @Test
+    void testClearScrollId() throws IOException {
+        String scrollId = "DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAAEqIWanNEQjNZNjRUZlNnLTFaYmxpMXUwUQ==";
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        ClearScrollResponse clearScrollResponse = esClient.clearScrollId(host, port, scrollId);
+        assertEquals(200, clearScrollResponse.status().getStatus());
     }
 }
