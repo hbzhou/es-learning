@@ -16,16 +16,19 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.bucket.range.Range;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ESClientTest {
+public class ESClientTest implements Serializable {
 
     ESClient esClient = new ESClient();
 
@@ -91,7 +94,6 @@ public class ESClientTest {
     @Test
     void testCreateDoc() throws IOException {
         String index = "person";
-        String type = "man";
         String host = "192.168.33.12";
         int port = 9200;
 
@@ -192,5 +194,78 @@ public class ESClientTest {
 
         ClearScrollResponse clearScrollResponse = esClient.clearScrollId(host, port, scrollId);
         assertEquals(200, clearScrollResponse.status().getStatus());
+    }
+
+    @Test
+    void testBoolSearch() throws IOException {
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        String index = "book";
+        String type = "novel";
+
+        SearchResponse searchResponse = esClient.boolSearch(host, port, index, type);
+        assertNotNull(searchResponse);
+    }
+
+    @Test
+    void testBoostingSearch() throws IOException {
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        String index = "book";
+        String type = "novel";
+
+        SearchResponse searchResponse = esClient.boostingSearch(host, port, index, type);
+        assertNotNull(searchResponse);
+    }
+
+    @Test
+    void testFilterSearch() throws IOException {
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        String index = "book";
+        String type = "novel";
+
+        SearchResponse searchResponse = esClient.filterSearch(host, port, index, type);
+        assertNotNull(searchResponse);
+    }
+
+    @Test
+    void testHighLightSearch() throws IOException {
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        String index = "book";
+        String type = "novel";
+
+        SearchResponse searchResponse = esClient.highLightSearch(host, port, index, type);
+        assertNotNull(searchResponse);
+    }
+
+    @Test
+    void testAggregateSearch() throws IOException {
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        String index = "book";
+        String type = "novel";
+
+        SearchResponse searchResponse = esClient.aggregateSearch(host, port, index, type);
+        assertNotNull(searchResponse);
+    }
+
+    @Test
+    void testAggregateRangeSearch() throws IOException {
+        String host = "192.168.33.12";
+        int port = 9200;
+
+        String index = "book";
+        String type = "novel";
+
+        SearchResponse searchResponse = esClient.aggregateRangeSearch(host, port, index, type);
+        Range rangeAggregation = searchResponse.getAggregations().get("agg");
+        assertNotNull(rangeAggregation);
     }
 }
