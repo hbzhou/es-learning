@@ -21,8 +21,14 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.range.DateRangeAggregationBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.IpRangeAggregationBuilder;
+import org.elasticsearch.search.aggregations.metrics.stats.extended.ExtendedStatsAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.IOException;
@@ -157,6 +163,8 @@ public class ESClient {
         //regexp query
         //builder.query(QueryBuilders.regexpQuery("mobile","182[0-9](8)"));
 
+        //geo query
+        builder.query(QueryBuilders.geoDistanceQuery("location").point(49.12312, 23.23423).distance("1222"));
         searchRequest.source(builder);
         RestHighLevelClient client = getClient(host, port);
 
@@ -207,5 +215,134 @@ public class ESClient {
 
         RestHighLevelClient client = getClient(host, port);
         return client.clearScroll(clearScrollRequest, RequestOptions.DEFAULT);
+    }
+
+    public SearchResponse boolSearch(String host, int port, String index, String type) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.types(type);
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder();
+        boolQueryBuilder.should(QueryBuilders.termQuery("name", "红楼梦"));
+        boolQueryBuilder.mustNot(QueryBuilders.matchQuery("author", "曹雪芹"));
+        boolQueryBuilder.must(QueryBuilders.termQuery("count", 1));
+        sourceBuilder.query(boolQueryBuilder);
+        searchRequest.source(sourceBuilder);
+
+        RestHighLevelClient client = getClient(host, port);
+        return client.search(searchRequest, RequestOptions.DEFAULT);
+
+    }
+
+    public SearchResponse boostingSearch(String host, int port, String index, String type) throws IOException {
+
+        SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.types(type);
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+
+        QueryBuilder positiveQueryBuilder = QueryBuilders.matchQuery("name", "jeremy");
+        QueryBuilder nativeQueryBuilder = QueryBuilders.matchQuery("author", "honey");
+
+
+        BoostingQueryBuilder boostingQueryBuilder = new BoostingQueryBuilder(positiveQueryBuilder, nativeQueryBuilder);
+        boostingQueryBuilder.negativeBoost(0.5f);
+
+        sourceBuilder.query(boostingQueryBuilder);
+        searchRequest.source(sourceBuilder);
+
+        RestHighLevelClient client = getClient(host, port);
+        return client.search(searchRequest, RequestOptions.DEFAULT);
+    }
+
+    public SearchResponse filterSearch(String host, int port, String index, String type) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.types(type);
+
+        BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder();
+        boolQueryBuilder.filter(QueryBuilders.termQuery("name", "红楼梦"));
+        boolQueryBuilder.filter(QueryBuilders.rangeQuery("count").gt(1).lt(10));
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        sourceBuilder.query(boolQueryBuilder);
+
+        searchRequest.source(sourceBuilder);
+
+        RestHighLevelClient client = getClient(host, port);
+
+        return client.search(searchRequest, RequestOptions.DEFAULT);
+
+    }
+
+    public SearchResponse highLightSearch(String host, int port, String index, String type) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.types(type);
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+
+        QueryBuilder matchQueryBuilder = QueryBuilders.matchQuery("desc", "华莱");
+
+        HighlightBuilder highlightBuilder = new HighlightBuilder();
+        highlightBuilder.field("desc");
+        highlightBuilder.preTags("<font color='red'>");
+        highlightBuilder.postTags("</font>");
+        highlightBuilder.fragmentSize(100);
+
+        sourceBuilder.query(matchQueryBuilder);
+        sourceBuilder.highlighter(highlightBuilder);
+
+        searchRequest.source(sourceBuilder);
+        return getClient(host, port).search(searchRequest, RequestOptions.DEFAULT);
+    }
+
+    public SearchResponse aggregateSearch(String host, int port, String index, String type) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.types(type);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        AggregationBuilder aggregationBuilder = AggregationBuilders.cardinality("agg").field("author");
+
+        //max, min , avg
+        AggregationBuilder extendedStatsAggregationBuilder = AggregationBuilders.extendedStats("agg").field("count");
+
+        searchSourceBuilder.aggregation(aggregationBuilder);
+
+        searchRequest.source(searchSourceBuilder);
+
+        RestHighLevelClient client = getClient(host, port);
+
+        return client.search(searchRequest, RequestOptions.DEFAULT);
+    }
+
+    public SearchResponse aggregateRangeSearch(String host, int port, String index, String type) throws IOException {
+        SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.types(type);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        AggregationBuilder aggregationBuilder = AggregationBuilders.range("agg")
+                .field("count")
+                .addUnboundedTo(10)
+                .addRange(11, 15)
+                .addUnboundedTo(90);
+        //data range
+        AggregationBuilder dateAggregationBuilder = AggregationBuilders.dateRange("agg")
+                .format("yyyy-MM-dd")
+                .addRange("1987-01-01", "2020-09-11");
+
+        //ip range
+        AggregationBuilder ipRangeAggregationBuilder = AggregationBuilders.ipRange("egg")
+                .addRange("192.168.1.1", "192.168.1.12");
+
+
+        searchSourceBuilder.aggregation(aggregationBuilder);
+
+        searchRequest.source(searchSourceBuilder);
+
+        RestHighLevelClient client = getClient(host, port);
+
+        return client.search(searchRequest, RequestOptions.DEFAULT);
     }
 }
